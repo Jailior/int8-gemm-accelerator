@@ -4,3 +4,6 @@ settings/*
 
 # Ignore the 'sim' directory (which has the Questa project files)
 sim/*
+
+# Simulation builds and logs from run_all.sh
+build/

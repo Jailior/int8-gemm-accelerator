@@ -17,6 +17,17 @@ C[M×N] (int32)  =  A[M×K] (int8)  ·  B[K×N] (int8)
 **Toolchain:** SystemVerilog; Questa for local simulation; Icarus Verilog and Verilator in
 CI; Quartus Prime Lite and Platform Designer; Python + NumPy; CUDA and Nsight Compute.
 
+[![correctness](https://github.com/Jailior/int8-gemm-accelerator/actions/workflows/ci.yml/badge.svg)](https://github.com/Jailior/int8-gemm-accelerator/actions/workflows/ci.yml)
+
+```bash
+./preflight.sh             # checks the toolchain
+./run_all.sh               # every check that needs no GPU or board: Icarus Verilog and Verilator lint
+SIM=questa ./run_all.sh    # the same testbenches in Questa
+```
+
+CI runs `./run_all.sh` on every push. Quartus builds, board runs and GPU timing need the
+hardware, so they run locally and their results are recorded here.
+
 ## What it measures
 
 The question is how each platform turns its multipliers into GEMM throughput, and what
@@ -83,7 +94,9 @@ Results: not measured yet.
 - **Shapes that small examples hide.** Non-square shapes (M ≠ N ≠ K) so swapped indices
   fail, sizes that are not a multiple of the array size (such as 300 on an 8×8 array) so the
   padded last tile is exercised, and −128 × −128 over long K for the accumulator.
-- **Self-checking testbenches.** Each one ends with a single PASS or FAIL line.
+- **Self-checking testbenches.** Each one ends with a `SUCCESS:` or `FAILURE:` line.
+  `run_all.sh` fails a testbench that reports FAILURE, never reports SUCCESS, or runs past
+  its timeout.
 
 ## Architecture
 
@@ -250,7 +263,8 @@ Results: not measured yet.
 
 ## Layout
 
-Only `rtl/int8mac.sv` and `rtl/tb_int8mac.sv` exist so far; the rest is the plan.
+So far the PE, its testbench, `run_all.sh`, `preflight.sh` and the CI workflow exist; the
+rest is the plan.
 
 ```
 python/

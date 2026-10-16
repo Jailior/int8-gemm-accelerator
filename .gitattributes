@@ -1,0 +1,2 @@
+# Shell scripts keep LF endings on every platform; bash fails on a stray \r.
+*.sh text eol=lf
