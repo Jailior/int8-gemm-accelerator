@@ -54,15 +54,9 @@ Results: not measured yet.
 
 - [x] Output-stationary dataflow and 4×4 timing sketch (Oct 14, 2026)
 - [x] PE RTL ([rtl/int8mac.sv](rtl/int8mac.sv))
-- [x] PE testbench with directed and random tests ([rtl/tb_int8mac.sv](rtl/tb_int8mac.sv))
-- [ ] PE testbench fixes
-  - [ ] Use `clear` (not `reset`) between random sequences
-  - [ ] Drive every input to 0 at time 0
-  - [ ] Force −128 × −128 once mid-sequence
-  - [ ] Drop the per-cycle "Passed!" print and end with a single PASS or FAIL line
-  - [ ] Size the constants in `reset_task` (`{reset, clr, en} = 3'b000`)
-  - [ ] Switch to `` `timescale 1ns/1ps ``
-- [ ] Rename `reset` to `reset_n`
+- [x] PE testbench passes in Questa ([rtl/tb_int8mac.sv](rtl/tb_int8mac.sv)): directed
+      tests, 200 random sequences with stalls and `clear` between them, and −128 × −128
+      forced mid-sequence
 - [ ] Parameterized N×N array
 - [ ] RTL skew feeders
 - [ ] Drain path
@@ -140,7 +134,7 @@ the array is tiled from.
 | Port             | Dir | Type              | Meaning                                            |
 | ---------------- | --- | ----------------- | -------------------------------------------------- |
 | `clk`            | in  | 1 bit             | Every register updates on the rising edge          |
-| `reset`          | in  | 1 bit, active low | Zeroes `acc`, `a_out`, `b_out`                     |
+| `reset_n`        | in  | 1 bit, active low | Zeroes `acc`, `a_out`, `b_out`                     |
 | `clear`          | in  | 1 bit             | Zeroes `acc` between tiles; overrides `en`         |
 | `en`             | in  | 1 bit             | Global clock enable: when low, the whole PE holds  |
 | `a_in`, `b_in`   | in  | `signed [7:0]`    | Operands from the left / top neighbour             |
@@ -246,8 +240,13 @@ Results: not measured yet.
   operands come from `a_in = $urandom;`, which keeps the low 8 bits.
 - **An off-by-one reference passes a broken design.** The expected value has to update on
   the same enabled edge as the DUT, not one loop iteration later.
-- **A bare `run` in Questa stops after 100 time units**, which is 100 ps with a 1 ps
-  timescale, long before the test finishes. Use `run -all`.
+- **A bare `run` in Questa stops after 100 units of the time resolution**, which is 100 ps
+  here, long before the test finishes. Changing the timescale to `1ns/1ps` does not help,
+  because the resolution is still 1 ps. Use `run -all`.
+- **A missing `begin`/`end` disabled the stall test.** `if (cond) a_in = -128; b_in = -128;
+  en = 1;` only makes the first assignment conditional, so every random cycle ran with
+  `b_in = -128` and `en = 1`. The test still passed; it just no longer tested stalls or
+  random B operands.
 
 ## Layout
 

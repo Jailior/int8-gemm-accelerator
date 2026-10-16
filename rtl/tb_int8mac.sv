@@ -1,26 +1,29 @@
-`timescale 1ps/1ps
+`timescale 1ns/1ps
 
-module tb_int8mac();
+module tb_int8mac;
 
-    int err_count;
-    int accum_len; 
+    // testbench counters
+    int                 err_count;
+    int                 test_err_count;
+    int                 initial_errors;
+    int                 accum_len; 
 
     // expected values of DUT
-    reg signed [31:0] expected_out;
-    reg signed [7:0] expected_a_out, expected_b_out;
+    reg signed [31:0]   expected_out;
+    reg signed [7:0]    expected_a_out, expected_b_out;
 
     // signals to drive
-    reg clk, reset, clr, en;
-    reg signed [7:0] a_in, b_in;
+    reg                 clk, reset_n, clear, en;
+    reg signed [7:0]    a_in, b_in;
 
     // signals to read
-    wire signed [31:0] acc_out;
-    wire signed [7:0] a_out, b_out;
+    wire signed [31:0]  acc_out;
+    wire signed [7:0]   a_out, b_out;
 
     int8mac dut(
         .clk(clk),
-        .reset(reset),
-        .clear(clr),
+        .reset_n(reset_n),
+        .clear(clear),
         .en(en),
         .a_in(a_in),
         .b_in(b_in),
@@ -32,10 +35,21 @@ module tb_int8mac();
     // Helper tasks
     task reset_task();
     begin
-        @(negedge clk);
-        { reset, clr, en } = { 0, 0, 0 };
-        @(negedge clk);
-        reset = 1;
+        @(negedge clk); { reset_n, clear, en } = 3'b0;
+        @(negedge clk); reset_n = 1;
+    
+        expected_out = 0;
+        expected_a_out = 0;
+        expected_b_out = 0;
+    end 
+    endtask
+
+    task clear_task();
+    begin
+        @(negedge clk); clear = 1;
+        @(negedge clk); clear = 0;
+    
+        expected_out = 0;
     end 
     endtask
 
@@ -55,6 +69,17 @@ module tb_int8mac();
         end
     end
     endtask
+
+    task check_error_count();
+    begin
+        if (err_count !== initial_errors) begin
+            test_err_count++;
+            $display("Test failed!");
+        end else begin
+            $display("Test passed!");
+        end
+    end
+    endtask
     
 
     // clock driving
@@ -66,17 +91,18 @@ module tb_int8mac();
     end
 
     initial begin
-        err_count = 0;
+        err_count = 0; test_err_count = 0; initial_errors = 0;
+        {clk, reset_n, clear, en} = 4'b0;
+        {a_in, b_in} = 16'b0;
 
         $display("[T1] Reset and check state");
         reset_task();
-        expected_out = 0;
-        expected_a_out = 0;
-        expected_b_out = 0;
         @(negedge clk);
         check_expected();
+        check_error_count();
 
         $display("[T2] Simple MAC operation");
+        initial_errors = err_count;
         reset_task();
         a_in = 10;
         b_in = 10;
@@ -88,14 +114,14 @@ module tb_int8mac();
         @(negedge clk);
         en = 0;
         check_expected();
+        check_error_count();
 
         $display("[T3] 200 Repeated randomized MAC tests");
+        initial_errors = err_count;
         reset_task();
+        expected_out = 0; expected_a_out = 0; expected_b_out = 0;
         for (int s = 0; s < 200; s++) begin
-            reset_task();
-            expected_out = 0;
-            expected_a_out = 0;
-            expected_b_out = 0;
+            clear_task();
             check_expected();
 
             accum_len = $urandom_range(1, 16);
@@ -103,6 +129,7 @@ module tb_int8mac();
                 a_in = $urandom;
                 b_in = $urandom;
                 en = ($urandom_range(0, 3) != 0);
+                if (i == accum_len / 2 && accum_len >= 2) begin a_in = -128; b_in = -128; en = 1; end
 
                 @(negedge clk);
                 if (en) begin
@@ -111,13 +138,12 @@ module tb_int8mac();
                     expected_b_out = b_in;
                 end
                 check_expected();
-                if (err_count == 0) begin
-                    $display("Passed!");
-                end
             end
         end
+        check_error_count();
 
         $display("[T4] -128 * -128 edge case");
+        initial_errors = err_count;
         reset_task();
         a_in = -128;
         b_in = -128;
@@ -127,12 +153,13 @@ module tb_int8mac();
         expected_a_out = -128;
         expected_b_out = -128;
         check_expected();
+        check_error_count();
 
         // Final report
         if (err_count == 0) begin
             $display("SUCCESS: All tests passed!");
         end else begin
-            $display("FAILURE: %d tests failed.", err_count);
+            $display("FAILURE: %d tests failed and %d checks failed.", test_err_count, err_count);
         end
         $finish;
     end
