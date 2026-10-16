@@ -1,0 +1,6 @@
+# Ignore the 'settings' directory (which has the .qsf board files)
+settings/*
+
+
+# Ignore the 'sim' directory (which has the Questa project files)
+sim/*
