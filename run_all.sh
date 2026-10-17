@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Every check that needs neither a GPU nor the board, in one command.
 #
-#   ./run_all.sh               Icarus Verilog plus Verilator lint (what CI runs)
-#   SIM=questa ./run_all.sh    the same testbenches in Questa
+#   ./run_all.sh               golden model, Icarus Verilog, Verilator lint (what CI runs)
+#   SIM=questa ./run_all.sh    the same, with the testbenches in Questa
+#
+# The golden model runs first and rewrites rtl/vectors/ and data/ with its defaults.
 #
 # A testbench passes only if it compiles, finishes within TIMEOUT seconds, and
 # prints a "SUCCESS:" line with no "FAILURE:" line. Any failure makes the script
@@ -70,6 +72,16 @@ run_tb() {
   fi
 }
 
+# golden [args...]: generate the M1 vectors into rtl/vectors/ and data/
+golden() {
+  local log="$BUILD/golden_model.log"
+  if "$PY" python/01_golden_model.py "$@" >"$log" 2>&1 && grep -q "SUCCESS:" "$log"; then
+    pass "golden model${*:+ $*}"
+  else
+    fail "golden model" "did not report SUCCESS" "$log"
+  fi
+}
+
 # lint <top module> <source files...>: Verilator warnings are errors, except a
 # missing newline at end of file, which is editor-dependent and not a design issue
 lint() {
@@ -90,7 +102,16 @@ esac
 for t in $tools timeout; do
   command -v "$t" >/dev/null 2>&1 || { echo "missing $t; run ./preflight.sh"; exit 2; }
 done
+# python3 on Linux; on Windows it is often only `python`
+PY=""
+for p in python3 python; do
+  if "$p" -c "import numpy" >/dev/null 2>&1; then PY=$p; break; fi
+done
+[ -n "$PY" ] || { echo "missing Python with NumPy; run ./preflight.sh"; exit 2; }
 mkdir -p "$BUILD"
+
+section "Golden model (M1)"
+golden
 
 section "RTL testbenches ($SIM)"
 run_tb tb_int8mac rtl/int8mac.sv rtl/tb_int8mac.sv

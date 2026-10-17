@@ -7,3 +7,7 @@ sim/*
 
 # Simulation builds and logs from run_all.sh
 build/
+
+# Data generated from golden model
+rtl/vectors/*
+data/*

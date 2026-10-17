@@ -45,23 +45,21 @@ case $SIM in
     exit 2
     ;;
 esac
+# The same search as run_all.sh: the first Python that can import NumPy
+py=""
+for p in python3 python; do
+  if "$p" -c "import numpy" >/dev/null 2>&1; then py=$p; break; fi
+done
+if [ -n "$py" ]; then
+  say "python" "OK    $("$py" --version 2>&1) ($py)"
+  say "numpy" "OK    $("$py" -c 'import numpy; print(numpy.__version__)')"
+else
+  say "numpy" "MISS  Python 3 with NumPy: pip install numpy, or apt install python3-numpy"
+  missing=1
+fi
 
 echo
 echo "=== later milestones (optional) ==="
-py=""
-for p in python3 python; do
-  if "$p" -c "import sys" >/dev/null 2>&1; then py=$p; break; fi
-done
-if [ -n "$py" ]; then
-  say "python" "OK    $("$py" --version 2>&1)"
-  if "$py" -c "import numpy" >/dev/null 2>&1; then
-    say "numpy" "OK    $("$py" -c 'import numpy; print(numpy.__version__)')"
-  else
-    say "numpy" "--    pip install numpy (M1 golden model)"
-  fi
-else
-  say "python" "--    Python 3 and NumPy (M1 golden model)"
-fi
 check want nvcc       "CUDA toolkit (M3, M4, M9)" sh -c "nvcc --version | grep release"
 check want quartus_sh "Quartus Prime Lite (M8)" sh -c "quartus_sh --version | grep Version"
 

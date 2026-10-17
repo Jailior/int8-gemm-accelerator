@@ -21,7 +21,7 @@ CI; Quartus Prime Lite and Platform Designer; Python + NumPy; CUDA and Nsight Co
 
 ```bash
 ./preflight.sh             # checks the toolchain
-./run_all.sh               # every check that needs no GPU or board: Icarus Verilog and Verilator lint
+./run_all.sh               # every check that needs no GPU or board: golden model, Icarus Verilog, Verilator lint
 SIM=questa ./run_all.sh    # the same testbenches in Questa
 ```
 
@@ -48,7 +48,7 @@ Results: not measured yet.
 
 | # | Milestone | Scope | Status | Checked against |
 |---|---|---|---|---|
-| M1 | Golden model | Random INT8 A and B, `C = A @ B` in int32; `.hex` vectors for RTL, `.bin` for C and CUDA | Not started | Itself, plus one hand-checked entry |
+| M1 | Golden model | Random INT8 A and B, `C = A @ B` in int32; `.hex` vectors for RTL, `.npy` for C and CUDA | Not started | Itself, plus one hand-checked entry |
 | M2 | Cycle model | Skewed schedule, tile order and drain; predicted cycles for any M, N, K and array size | Not started | M1 values; the `2N + K − 2` closed form |
 | M3 | CUDA naive | One thread per C element | Not started | M1, bit-exact |
 | M4 | CUDA tiled | Tiles of A and B staged in shared memory | Not started | M1, bit-exact |
@@ -75,11 +75,14 @@ Results: not measured yet.
 
 **M1: Golden model**
 
-- [ ] Random signed INT8 A and B for a given shape and seed; `C = A.astype(int32) @ B.astype(int32)`
-- [ ] `.hex` files for `$readmemh`: row-major, one value per line, two's complement (2 hex
+- [x] Random signed INT8 A and B for a given shape and seed; `C = A.astype(int32) @ B.astype(int32)`
+- [x] `.hex` files for `$readmemh`: row-major, one value per line, two's complement (2 hex
       digits per operand, 8 per result)
-- [ ] `.bin` files for the HPS driver and the CUDA kernels
-- [ ] Hand-check one entry of C, including decoding a negative value from hex
+- [x] `.npy` files for the HPS driver and the CUDA kernels: A as (count, M, K) and B as
+      (count, K, N) in int8, and C as (count, M, N) in int32
+- [ ] A shared C reader for those files that checks the dtype (`'|i1'` or `'<i4'`), the
+      C memory order and the shape, and checks every `fread` count
+- [x] Hand-check one entry of C, including decoding a negative value from hex
 
 ## How it is verified
 
@@ -268,7 +271,7 @@ rest is the plan.
 
 ```
 python/
-  01_golden_model.py      M1, writes rtl/vectors/*.hex and data/*.bin
+  01_golden_model.py      M1, writes rtl/vectors/*.hex and data/*.npy
   02_cycle_model.py       M2, predicted cycles for any shape and array size
   03_link_budget.py       bandwidth needed vs available, per N and Fmax
 rtl/
@@ -281,6 +284,9 @@ rtl/
   gemm_top.sv             Avalon-MM and Avalon-ST wrapper
   tb_*.sv                 a self-checking testbench next to each module
   vectors/                golden .hex files from M1
+data/                     golden .npy files from M1
+common/
+  npy.h                   minimal .npy reader, shared by hps/ and cuda/
 cuda/
   01_gemm_naive.cu ... 06_gemm_cublaslt.cu
 hps/
