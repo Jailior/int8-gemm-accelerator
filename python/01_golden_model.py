@@ -29,15 +29,6 @@ DEFAULT_NPY_OUT_PATH = REPO / "data"
 HEX_DIGITS = set("0123456789abcdef")
 
 
-class CheckFailed(Exception):
-    pass
-
-
-def check(condition, message):
-    if not condition:
-        raise CheckFailed(message)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate the golden INT8 GEMM test vectors (M1).")
     parser.add_argument("--m", type=int, default=4, help="The M in A (M x K)")

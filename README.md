@@ -48,7 +48,7 @@ Results: not measured yet.
 
 | # | Milestone | Scope | Status | Checked against |
 |---|---|---|---|---|
-| M1 | Golden model | Random INT8 A and B, `C = A @ B` in int32; `.hex` vectors for RTL, `.npy` for C and CUDA | Not started | Itself, plus one hand-checked entry |
+| M1 | Golden model | Random INT8 A and B, `C = A @ B` in int32; `.hex` vectors for RTL, `.npy` for C and CUDA | done | Itself, plus one hand-checked entry |
 | M2 | Cycle model | Skewed schedule, tile order and drain; predicted cycles for any M, N, K and array size | Not started | M1 values; the `2N + K − 2` closed form |
 | M3 | CUDA naive | One thread per C element | Not started | M1, bit-exact |
 | M4 | CUDA tiled | Tiles of A and B staged in shared memory | Not started | M1, bit-exact |
